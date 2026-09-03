@@ -33,8 +33,18 @@ jobs:
           ENVIRONMENT: production
         run: |
           python scripts/migrate.py
-          timeout 20s python -m uvicorn app:api --host 127.0.0.1 --port 8000 >/tmp/ai-ops-api.log 2>&1 &
+          python -m uvicorn app:api --host 127.0.0.1 --port 8000 >/tmp/ai-ops-api.log 2>&1 & echo $! >/tmp/ai-ops-api.pid
           for i in $(seq 1 20); do curl --fail http://127.0.0.1:8000/health && curl --fail http://127.0.0.1:8000/ready && break || sleep 1; done
-          kill $(pgrep -f 'uvicorn app:api' | head -1) || true
       - run: docker build -t ai-ops-control-plane:ci .
-      - run: WEBHOOK_SECRET=ci-webhook-secret OPERATOR_TOKEN=ci-operator-token POSTGRES_PASSWORD=ci-password docker compose -f infra/docker-compose.yml config
+      - name: Real n8n runtime integration smoke test
+        run: |
+          docker volume create n8n-ci-data
+          docker run --rm --name n8n-import -e N8N_DIAGNOSTICS_ENABLED=false \
+            -v n8n-ci-data:/home/node/.n8n -v "$GITHUB_WORKSPACE/n8n:/workflows:ro" \
+            n8nio/n8n:1.107.3 import:workflow --input=/workflows/ci-proof.json
+          docker run --rm --name n8n-execute -e N8N_DIAGNOSTICS_ENABLED=false \
+            -e N8N_RUNNERS_ENABLED=false --add-host=host.docker.internal:host-gateway \
+            -v n8n-ci-data:/home/node/.n8n n8nio/n8n:1.107.3 execute --id=ci-proof-v1 --rawOutput | tee /tmp/n8n-proof.txt
+          grep -E 'Execution|runtime_evidence|execution' /tmp/n8n-proof.txt
+          docker volume rm n8n-ci-data
+          kill $(cat /tmp/ai-ops-api.pid) || true

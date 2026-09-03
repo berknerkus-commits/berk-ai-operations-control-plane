@@ -129,10 +129,10 @@ class ControlPlane:
         for attempt in range(1, 4):
             try:
                 self.crm_sync(asdict(event), asdict(decision))
-                result = Decision(**{**asdict(decision), "attempt": attempt})
+                result = Decision(**{**asdict(decision), "status": "completed" if phase == "recovery" else "accepted", "attempt": attempt})
                 with self._tx():
                     self.db.execute("INSERT INTO retry_attempts(event_id,phase,attempt,outcome,error,created_at) VALUES(?,?,?,?,?,?)", (event.event_id, phase, attempt, "succeeded", None, time.time()))
-                    self.db.execute("UPDATE events SET status=?,updated_at=? WHERE event_id=?", (decision.action, time.time(), event.event_id))
+                    self.db.execute("UPDATE events SET status=?,updated_at=? WHERE event_id=?", (result.status, time.time(), event.event_id))
                     self.db.execute("UPDATE decisions SET body=?,updated_at=? WHERE event_id=?", (json.dumps(asdict(result)), time.time(), event.event_id)); self._audit(event.event_id, "connector_succeeded", {"attempt": attempt, "phase": phase})
                 self.metrics["accepted"] += 1; return result
             except TRANSIENT as exc:
@@ -220,6 +220,25 @@ try:
             try: return asdict(plane.ingest(json.loads(raw), x_correlation_id))
             except json.JSONDecodeError: raise HTTPException(400, "malformed JSON")
             except ValueError as exc: raise HTTPException(422, str(exc))
+        @app.post("/v1/demo/failure")
+        async def demo_failure(request: Request):
+            body = await request.json()
+            body.setdefault("source", "public-failure-demo")
+            def fail(_event, _decision): raise TimeoutError("controlled synthetic dependency failure")
+            plane.crm_sync = fail
+            try:
+                decision = plane.ingest(body, correlation_id=f"demo-{body['event_id']}")
+            except Exception as exc:
+                raise HTTPException(422, str(exc))
+            item = plane.dlq()[0]
+            return {"event": plane.event_detail(body["event_id"]), "dlq": item, "audit": plane.audit_history(body["event_id"]), "timeline": ["received", "validated", "persisted", "workflow_started", "dependency_failed", "retrying", "retry_exhausted", "dlq"]}
+        @app.post("/v1/demo/recover/{dlq_id}")
+        def demo_recover(dlq_id: int):
+            plane.crm_sync = lambda _event, _decision: None
+            try: item = plane.retry_dead_letter(dlq_id)
+            except (KeyError, ValueError) as exc: raise HTTPException(409, str(exc))
+            event_id = item["event_id"]
+            return {"event": plane.event_detail(event_id), "dlq": item, "audit": plane.audit_history(event_id), "timeline": ["recovery_requested", "completed"]}
         @app.get("/v1/events/{event_id}", dependencies=[Depends(operator)])
         def event(event_id):
             try: return plane.event_detail(event_id)
