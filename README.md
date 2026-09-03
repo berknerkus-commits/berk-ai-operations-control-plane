@@ -1,6 +1,6 @@
 # AI Operations Control Plane
 
-**Synthetic, production-minded B2B operations orchestration reference implementation by Berk Erkuş.**
+**B2B operations orchestration reference implementation by Berk Erkuş.**
 
 > A CTO should be able to inspect the boundaries, replay failures, and understand what happens when the model, CRM, network, or human reviewer is unavailable. This project is designed for that review—not as a tutorial and not as a claim of customer results.
 
@@ -10,8 +10,8 @@
 
 ![Architecture](docs/architecture.svg)
 
-- **Live demo:** https://berknerkus-commits.github.io/berk-ai-operations-control-plane/
-- **API docs:** `/docs` when running locally
+- **Browser shell:** https://berknerkus-commits.github.io/berk-ai-operations-control-plane/ (static until a verified deployment is available)
+- **API docs:** `/docs` when running the FastAPI service
 - **n8n export:** [`n8n/ai-ops-control-plane.json`](n8n/ai-ops-control-plane.json)
 - **Threat model:** [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md)
 - **Observability:** [`docs/OBSERVABILITY.md`](docs/OBSERVABILITY.md)
@@ -22,7 +22,7 @@
 2. **At-least-once delivery is assumed.** `event_id` is the idempotency boundary. Replays return the existing decision instead of creating another decision; downstream connectors must also enforce the same key before a real side effect.
 3. **Every failure has a destination.** Invalid input is rejected at the boundary; transient downstream failures retry with backoff; exhausted work belongs in a dead-letter queue; each transition is audited.
 4. **Security is explicit.** HMAC webhook verification, correlation IDs, bounded payloads, parameterized persistence and secret-by-environment configuration are shown. Production needs key rotation, replay windows, rate limits and a managed secret store.
-5. **Local and deployed paths are separated.** Tests use SQLite for fast deterministic verification; Compose provisions PostgreSQL, n8n and the API for deployment-shaped review. The SQL schema is the production persistence contract.
+5. **Local and deployed paths are separated.** Tests may use SQLite for fast deterministic verification; Compose provisions PostgreSQL, n8n and the API for deployment-shaped review.
 
 ## Run
 
@@ -47,7 +47,7 @@ Endpoints: `GET /health`, `GET /ops/metrics`, `POST /v1/webhooks/operations`, `W
 - Integration-shaped tests: persistence and audit/approval state transitions.
 - Failure tests: transient retry/backoff and dead-letter recording.
 - CI: GitHub Actions runs tests, compile checks and Compose configuration validation.
-- Synthetic benchmark: `python benchmarks/throughput.py` measures local in-memory dispatch only; it is not a production capacity claim.
+- Local benchmark: `python benchmarks/throughput.py` measures in-memory dispatch only; it is not a production capacity claim.
 
 ## Demo walkthrough (90–120 seconds)
 
@@ -61,7 +61,7 @@ Endpoints: `GET /health`, `GET /ops/metrics`, `POST /v1/webhooks/operations`, `W
 
 ## Production next steps and limits
 
-- Replace SQLite adapter with the included PostgreSQL schema and transaction/locking strategy.
+- Run the PostgreSQL migration before starting the API; SQLite is test-only.
 - Add provider-specific structured-output validation, prompt/version registry, redaction and model-evaluation gates.
 - Add authentication/authorization for operators, approval UI, CRM connector contracts, webhook replay windows, rate limiting and secret rotation.
 - Add OpenTelemetry traces, Prometheus scraping and alert rules; the current `/ops/metrics`, audit records and JSON logs are the intentionally small observability seam.
