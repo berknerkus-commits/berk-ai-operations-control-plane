@@ -42,10 +42,12 @@ jobs:
           docker run -d --name n8n-ci -p 5679:5678 \
             -e N8N_SECURE_COOKIE=false -e N8N_USER_MANAGEMENT_DISABLED=true \
             -e N8N_DIAGNOSTICS_ENABLED=false -e N8N_PERSONALIZATION_ENABLED=false \
+            -e N8N_RUNNERS_ENABLED=true -e DB_SQLITE_POOL_SIZE=2 \
             --add-host=host.docker.internal:host-gateway \
             -v "$GITHUB_WORKSPACE/n8n:/workflows:ro" n8nio/n8n:1.107.3
           for i in $(seq 1 60); do curl --fail http://127.0.0.1:5679/healthz && break || sleep 2; done
           docker exec n8n-ci n8n import:workflow --input=/workflows/ci-proof.json
+          docker exec n8n-ci n8n update:workflow --id=ci-proof-v1 --active=true
           curl --fail -X POST http://127.0.0.1:5679/webhook/ci-proof | tee /tmp/n8n-proof.json
           python -c 'import json; d=json.load(open("/tmp/n8n-proof.json")); assert d["backend"]["status"] == "ok"'
           docker rm -f n8n-ci

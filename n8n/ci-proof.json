@@ -1,5 +1,6 @@
 {
   "name": "CI n8n runtime proof",
+  "id": "ci-proof-v1",
   "nodes": [
     {
       "parameters": {"httpMethod": "POST", "path": "ci-proof", "responseMode": "responseNode"},
