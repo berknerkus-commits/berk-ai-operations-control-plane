@@ -1,0 +1,31 @@
+# Render Blueprint: the only persistent public runtime is FastAPI + Render Postgres.
+# n8n is intentionally CI-only because two always-on Free web services share a 750-hour workspace budget.
+services:
+  - type: web
+    name: berk-ai-ops-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    autoDeploy: true
+    startCommand: python scripts/migrate.py && uvicorn app:api --host 0.0.0.0 --port 8000
+    healthCheckPath: /ready
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: berk-ai-ops-postgres
+          property: connectionString
+      - key: WEBHOOK_SECRET
+        generateValue: true
+      - key: OPERATOR_TOKEN
+        generateValue: true
+      - key: ENVIRONMENT
+        value: production
+      - key: PYTHONUNBUFFERED
+        value: "1"
+
+databases:
+  - name: berk-ai-ops-postgres
+    plan: free
+    databaseName: ai_ops
+    user: ai_ops

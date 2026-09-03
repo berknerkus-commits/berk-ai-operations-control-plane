@@ -1,0 +1,38 @@
+{
+  "name": "CI n8n runtime proof",
+  "nodes": [
+    {
+      "parameters": {"httpMethod": "POST", "path": "ci-proof", "responseMode": "responseNode"},
+      "id": "webhook",
+      "name": "CI trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "ci-proof"
+    },
+    {
+      "parameters": {"method": "GET", "url": "http://host.docker.internal:8000/health", "options": {}},
+      "id": "health",
+      "name": "Invoke FastAPI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [240, 0]
+    },
+    {
+      "parameters": {"respondWith": "json", "responseBody": "={{JSON.stringify({n8n_execution: $execution.id, backend: $json})}}", "options": {}},
+      "id": "response",
+      "name": "Return execution evidence",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [500, 0]
+    }
+  ],
+  "connections": {
+    "CI trigger": {"main": [[{"node": "Invoke FastAPI", "type": "main", "index": 0}]]},
+    "Invoke FastAPI": {"main": [[{"node": "Return execution evidence", "type": "main", "index": 0}]]}
+  },
+  "active": true,
+  "settings": {},
+  "versionId": "ci-proof-v1",
+  "meta": {"templateCredsSetupCompleted": true}
+}
