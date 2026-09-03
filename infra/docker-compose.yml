@@ -1,0 +1,24 @@
+services:
+  api:
+    build: .
+    environment:
+      DATABASE_URL: postgresql://ops:${POSTGRES_PASSWORD:?set a local password}@postgres:5432/ops
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET:?set a local secret}
+    ports: ["8000:8000"]
+    depends_on: [postgres]
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ops
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set a local password}
+      POSTGRES_DB: ops
+    volumes: [ops-data:/var/lib/postgresql/data]
+  n8n:
+    image: n8nio/n8n:latest
+    ports: ["5678:5678"]
+    environment:
+      N8N_SECURE_COOKIE: "false"
+    volumes: [n8n-data:/home/node/.n8n]
+volumes:
+  ops-data:
+  n8n-data:
