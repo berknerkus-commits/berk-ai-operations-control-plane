@@ -4,8 +4,9 @@ services:
       context: ..
       dockerfile: Dockerfile
     environment:
-      DATABASE_URL: postgresql://ops:${POSTGRES_PASSWORD:?set a local password}@postgres:5432/ops
+      DATABASE_URL: postgresql://ops:${POSTGRES_PASSWORD}@postgres:5432/ops
       WEBHOOK_SECRET: ${WEBHOOK_SECRET:?set a local secret}
+      OPERATOR_TOKEN: ${OPERATOR_TOKEN:?set an operator token}
       ENVIRONMENT: production
     ports: ["8000:8000"]
     depends_on:
@@ -29,12 +30,14 @@ services:
       retries: 10
     volumes:
       - ops-data:/var/lib/postgresql/data
-      - ./schema.sql:/docker-entrypoint-initdb.d/001-schema.sql:ro
   n8n:
     image: n8nio/n8n:1.107.3
-    ports: ["5678:5678"]
+    ports: ["5679:5678"]
     environment:
       N8N_SECURE_COOKIE: "false"
+      CONTROL_PLANE_URL: ${CONTROL_PLANE_URL:-http://api:8000}
+      CRM_SYNC_URL: ${CRM_SYNC_URL:-http://crm-stub:8090/sync}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET:?set a local secret}
     volumes: [n8n-data:/home/node/.n8n]
 volumes:
   ops-data:

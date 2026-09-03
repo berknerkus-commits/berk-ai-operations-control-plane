@@ -23,5 +23,6 @@ def test_http_rejects_bad_signature_and_malformed_json():
 def test_approval_api():
     body={"event_id":"http-billing","account_id":"acct","email":"x@example.com","message":"refund invoice"}
     raw,sig=signed(body); assert client.post("/v1/webhooks/operations",content=raw,headers={"X-Webhook-Signature":sig}).status_code==200
-    assert client.get("/v1/approvals/queue").json()["items"]
-    assert client.post("/v1/approvals/http-billing",json={"state":"approved","reviewer":"synthetic-operator"}).status_code==200
+    auth={"Authorization":"Bearer operator-test-token"}
+    assert client.get("/v1/approvals/queue",headers=auth).json()["items"]
+    assert client.post("/v1/approvals/http-billing",json={"state":"approved","reviewer":"synthetic-operator"},headers=auth).status_code==200
