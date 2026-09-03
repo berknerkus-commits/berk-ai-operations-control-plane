@@ -66,7 +66,8 @@ class ControlPlane:
         event=self.validate(data,correlation_id);payload=json.dumps(asdict(event),sort_keys=True)
         with self.lock:
             try:self.db.execute("INSERT INTO events VALUES(?,?,?,?)",(event.event_id,payload,"received",time.time()));self.db.commit()
-            except sqlite3.IntegrityError:
+            except Exception as exc:
+                if not isinstance(exc,sqlite3.IntegrityError) and exc.__class__.__name__ not in {"UniqueViolation","IntegrityError"}: raise
                 self.metrics["duplicates"]+=1;row=self.db.execute("SELECT body FROM decisions WHERE event_id=?",(event.event_id,)).fetchone()
                 if row:return Decision(**json.loads(row[0]))
                 raise RuntimeError("event is processing; retry later")

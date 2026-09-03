@@ -19,7 +19,7 @@
 ## Engineering decisions
 
 1. **The model proposes; policy decides.** The classifier is constrained to a small intent schema. High-impact and uncertain cases require a human approval queue.
-2. **At-least-once delivery is assumed.** `event_id` is the idempotency boundary. Replays return the existing decision instead of creating another decision or CRM side effect.
+2. **At-least-once delivery is assumed.** `event_id` is the idempotency boundary. Replays return the existing decision instead of creating another decision; downstream connectors must also enforce the same key before a real side effect.
 3. **Every failure has a destination.** Invalid input is rejected at the boundary; transient downstream failures retry with backoff; exhausted work belongs in a dead-letter queue; each transition is audited.
 4. **Security is explicit.** HMAC webhook verification, correlation IDs, bounded payloads, parameterized persistence and secret-by-environment configuration are shown. Production needs key rotation, replay windows, rate limits and a managed secret store.
 5. **Local and deployed paths are separated.** Tests use SQLite for fast deterministic verification; Compose provisions PostgreSQL, n8n and the API for deployment-shaped review. The SQL schema is the production persistence contract.
