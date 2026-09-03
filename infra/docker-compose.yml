@@ -1,20 +1,37 @@
 services:
   api:
-    build: .
+    build:
+      context: ..
+      dockerfile: Dockerfile
     environment:
       DATABASE_URL: postgresql://ops:${POSTGRES_PASSWORD:?set a local password}@postgres:5432/ops
       WEBHOOK_SECRET: ${WEBHOOK_SECRET:?set a local secret}
+      ENVIRONMENT: production
     ports: ["8000:8000"]
-    depends_on: [postgres]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
   postgres:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: ops
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set a local password}
       POSTGRES_DB: ops
-    volumes: [ops-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ops -d ops"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - ops-data:/var/lib/postgresql/data
+      - ./schema.sql:/docker-entrypoint-initdb.d/001-schema.sql:ro
   n8n:
-    image: n8nio/n8n:latest
+    image: n8nio/n8n:1.107.3
     ports: ["5678:5678"]
     environment:
       N8N_SECURE_COOKIE: "false"

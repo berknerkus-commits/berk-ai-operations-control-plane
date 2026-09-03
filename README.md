@@ -13,6 +13,8 @@
 - **Live demo:** https://berknerkus-commits.github.io/berk-ai-operations-control-plane/
 - **API docs:** `/docs` when running locally
 - **n8n export:** [`n8n/ai-ops-control-plane.json`](n8n/ai-ops-control-plane.json)
+- **Threat model:** [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md)
+- **Observability:** [`docs/OBSERVABILITY.md`](docs/OBSERVABILITY.md)
 
 ## Engineering decisions
 
